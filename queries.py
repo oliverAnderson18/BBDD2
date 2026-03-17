@@ -1,6 +1,7 @@
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, Table, DECIMAL, func
-from sqlalchemy.orm import sessionmaker, declarative_base, relationship
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, Table, DECIMAL, func 
+from sqlalchemy.orm import sessionmaker, declarative_base, relationship 
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 engine = create_engine("sqlite+pysqlite:///sakila_db.sqlite3", echo=False, future=True)
 Session = sessionmaker(bind=engine)
@@ -20,7 +21,8 @@ film_category_table = Table(
     'film_category',
     Base.metadata,
     Column('film_id', Integer, ForeignKey('film.film_id'), primary_key=True),
-    Column('category_id', Integer, ForeignKey('category.category_id'), primary_key=True)
+    Column('category_id', Integer, ForeignKey('category.category_id'), primary_key=True),
+    Column('last_update', DateTime, nullable=False, default=datetime.now())
 )
 
 # definimos las clases necesarias
@@ -39,6 +41,7 @@ class Category(Base):
     
     category_id = Column(Integer, primary_key=True)
     name = Column(String)
+    last_update = Column(DateTime, nullable=False, default=datetime.now())
     
     films = relationship("Film", secondary=film_category_table, back_populates="categories")
 
@@ -75,6 +78,7 @@ class Customer(Base):
     last_name = Column(String)
     
     rentals = relationship("Rental", back_populates="customer")
+    payments = relationship("Payment", back_populates="customer")
 
 
 class Rental(Base):
@@ -89,8 +93,22 @@ class Rental(Base):
     
     customer = relationship("Customer", back_populates="rentals")
     inventory = relationship("Inventory", back_populates="rentals")
+    payments = relationship("Payment", back_populates="rental")
+
+
+class Payment(Base):
+    __tablename__ = 'payment'
     
+    payment_id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey('customer.customer_id'))
+    rental_id = Column(Integer, ForeignKey('rental.rental_id'))
     
+    amount = Column(DECIMAL(5, 2))
+    payment_date = Column(DateTime)
+        
+    customer = relationship("Customer", back_populates="payments")
+    rental = relationship("Rental", back_populates="payments")
+
 def query_1(cliente_id):
 
     resultado = session.query(
@@ -198,6 +216,96 @@ def query_5():
     
     for fila in resultado:
         print(f"Titulo de la pelicula: {fila.title}\n")
+
+def query_6():
+    resultado = session.query(
+        Category.name,
+        func.avg(Payment.amount).label("promedio_pago")
+    ).join(
+        Category.films
+    ).join(
+        Film.inventories
+    ).join(
+        Inventory.rentals
+    ).join(
+        Rental.payments
+    ).group_by(
+        Category.name
+    )
+
+    for fila in resultado:
+        print(f"Categoría: {fila.name}")
+        print(f"Promedio de pago: {fila.promedio_pago}\n")
+
+from decimal import Decimal
+
+def query_7():
+    media_duracion = session.query(
+        func.avg(Film.length)
+    ).filter(Film.length != None
+    ).scalar_subquery()
+
+    pagos_antes = session.query(
+        Payment.payment_id,
+        Payment.amount,
+        Film.title
+    ).join(Rental).join(Inventory).join(Film).filter(
+        Film.length > media_duracion
+    ).order_by(Payment.payment_id).all()
+
+    session.query(Payment).filter(
+        Payment.payment_id.in_([p.payment_id for p in pagos_antes])
+    ).update(
+        {Payment.amount: Payment.amount * Decimal("1.10")},
+        synchronize_session=False
+    )
+    session.commit()
+
+    pagos_despues = session.query(
+        Payment.payment_id,
+        Payment.amount,
+        Film.title
+    ).join(Rental).join(Inventory).join(Film).filter(
+        Payment.payment_id.in_([p.payment_id for p in pagos_antes])
+    ).order_by(Payment.payment_id).all()
+
+    print("Título | Payment ID | Precio Antes | Precio Después\n")
+    for antes, despues in zip(pagos_antes, pagos_despues):
+        print(f"{antes.title} | {antes.payment_id} | {antes.amount} | {despues.amount}")
+
+from sqlalchemy import func
+
+from sqlalchemy import func
+
+from datetime import datetime
+from sqlalchemy import func
+
+def query_8():
+    media_precio = session.query(func.avg(Film.rental_rate)).scalar()
+
+    peliculas_premium = session.query(Film.film_id).filter(
+        Film.rental_rate > media_precio
+    ).all()
+
+    max_id = session.query(func.max(Category.category_id)).scalar() or 0
+    nueva_categoria = Category(
+        category_id=max_id + 1,
+        name="Premium",
+        last_update=datetime.now()
+    )
+    session.add(nueva_categoria)
+    session.flush() 
+
+    for film_id, in peliculas_premium:
+        session.execute(
+            film_category_table.insert().values(
+                film_id=film_id,
+                category_id=nueva_categoria.category_id
+            )
+        )
+
+    session.commit()
+
     
 
 def mostrar_menu():
