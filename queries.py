@@ -235,9 +235,7 @@ def query_6():
 
     for fila in resultado:
         print(f"Categoría: {fila.name}")
-        print(f"Promedio de pago: {fila.promedio_pago}\n")
-
-from decimal import Decimal
+        print(f"Promedio de pago: {round(fila.promedio_pago, 3)}\n")
 
 def query_7():
     media_duracion = session.query(
@@ -272,13 +270,6 @@ def query_7():
     print("Título | Payment ID | Precio Antes | Precio Después\n")
     for antes, despues in zip(pagos_antes, pagos_despues):
         print(f"{antes.title} | {antes.payment_id} | {antes.amount} | {despues.amount}")
-
-from sqlalchemy import func
-
-from sqlalchemy import func
-
-from datetime import datetime
-from sqlalchemy import func
 
 def query_8():
     media_precio = session.query(func.avg(Film.rental_rate)).scalar()
