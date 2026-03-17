@@ -315,14 +315,16 @@ def mostrar_menu():
     print("3. Datos del cliente por alquiler de pelicula")
     print("4. Clientes que devolvieron alquiler hace mas de 30 dias")
     print("5. Peliculas que nunca fueron alquiladas")
-    print("0. Interrumpir el bucle (Salida)")
+    print("6. Promedio de pago por categoria")
+    print("7. Incrementar pagos de peliculas largas")
+    print("8. Crear categoria Premium para peliculas caras")
+    print("0. Salir")
     print("---------------------------------------------\n")
-    
 
 if __name__ == "__main__":
     while True:
         mostrar_menu()
-        opcion = input("Selecciona una opcion (0-8): ")
+        opcion = input("Selecciona una opcion (0-8): ").strip()
 
         if opcion == "1":
             try:
@@ -335,31 +337,28 @@ if __name__ == "__main__":
             query_2()
 
         elif opcion == "3":
-            try:
-                titulo = str(input("Introduce el titulo de la pelicula: "))
-                query_3(titulo)
-            except ValueError:
-                print("Error: El titulo debe ser un string.")
-        
+            titulo = input("Introduce el titulo de la pelicula: ").strip()
+            query_3(titulo)
+
         elif opcion == "4":
             query_4()
-            
+
         elif opcion == "5":
             query_5()
-            
+
         elif opcion == "6":
             query_6()
-            
+
         elif opcion == "7":
             query_7()
-            
+
         elif opcion == "8":
             query_8()
 
         elif opcion == "0":
             print("Salida con exito")
-            session.close() 
+            session.close()
             break
-        
+
         else:
             print("Opcion no valida. Intentalo de nuevo.")
