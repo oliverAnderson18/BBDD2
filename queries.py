@@ -297,6 +297,11 @@ def query_8():
 
     session.commit()
 
+    print("Películas que ahora pertenecen a la categoría 'Premium':")
+    for film_id, in peliculas_premium:
+        pelicula = session.query(Film).filter_by(film_id=film_id).first()
+        print(pelicula.title)
+
     
 
 def mostrar_menu():
